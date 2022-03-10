@@ -380,7 +380,7 @@ public native int hashCode();
 
 ### 3.3 String、StringBuffer、StringBuilder的区别
 #### 可变性
-* `String` 类中使用 `final` 关键字修饰字符数组来保存字符串，`private　final　char　value[]`，所以 `String` 对象是不可变的。（还不是为了线程安全和JVM缓存速度问题）
+* `String` 类中使用 `final` 关键字修饰字符数组来保存字符串，`private　final　char[]　value，所以 `String` 对象是不可变的。（还不是为了线程安全和JVM缓存速度问题）
 * `StringBuilder` 与 `StringBuffer` 都继承自 `AbstractStringBuilder` 类，在 `AbstractStringBuilder` 中也是使用字符数组保存字符串char[]value 但是没有用 `final` 关键字修饰，所以这两种对象都是可变的
 
 #### 线程安全
@@ -475,7 +475,20 @@ protected void finalize(); // 当垃圾回收确定不再有对对象的引用�
 ```
 
 ### 3.6 异常
-看网课
+> `Java`将程序执行中发生的不正常情况称为“异常”。
+* 执行过程中所发生的的异常事件可分为两大类：
+  * **Error**：Java虚拟机无法解决的严重问题，如JVM系统内部错误、资源耗尽等情况，如栈溢出和内存耗尽
+  * **Exception**：其他因变成错误或偶然的外在因素导致的一般性问题，可以使用针对性的代码处理。例如空指针访问。Exception分为两大类，运行时异常（`RunTimeException`）和编译时异常(FileNotFoundException)
+
+#### 异常体系
+* `Throwable-->Error，Exception`
+  * `Error--> StackOverflowError,OutOfMemoryError`
+  * `Exception-->RuntimeException-->NullPointerException, ArithmeticException,ArrayIndexOutOfBoundsException, ClassCastException, NUmberFormatException`
+#### 受检异常和非受检异常
+* 派生于`Error和RuntimException`的所有异常都是非受检异常，所有其他的异常成为受检异常
+
+#### try/catch/finally语句执行顺序
+> finally语句总会执行，如果try{}中有return语句，先执行try（包括return表达式），再执行finally，最后返回return表达式的结果
 
 ### 3.7 值传递
 - 一个方法**不能修改一个基本数据类型的参数**（即数值型或布尔型）。
