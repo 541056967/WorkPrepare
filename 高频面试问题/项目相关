@@ -1,0 +1,111 @@
+# 项目相关
+## 1. PDC Android
+> 涉及技术点：WebSocket， 数据库， SMB， Android, fastJson
+### 1.1 WebSocket
+#### WebSocket介绍
+> WebSocket是一个持久化的协议，是一个完整的应用层协议；与HTTP协议基本没有关系，只是为了兼容现有浏览器，所以在握手阶段使用了HTTP
+
+#### 项目中使用okhttp3实现websocket
+```java
+ private String wsUrl;
+    private WebSocket webSocket;
+    public ConnectStatus status;
+    public static String cookie;
+    public static String serverID;
+    public RecMesMap recMes = new RecMesMap();
+    private OkHttpClient client = new OkHttpClient.Builder()
+            .build();
+
+    private MyWebSocket(String wsUrl) {
+        this.wsUrl = wsUrl;
+    }
+
+    public synchronized static MyWebSocket getInstance(String url) {
+
+        INST = new MyWebSocket(url);
+        return INST;
+    }
+
+    public void connect() {
+        //构造request对象
+        Request request = new Request.Builder()
+                .url(wsUrl)
+                .build();
+
+        webSocket = client.newWebSocket(request, this);
+        status = ConnectStatus.Connecting;
+    }
+```
+> 创建MyWebSocket类，继承WebSocketListener
+* onOpen()，连接成功
+* onMessage(String text)，收到字符串类型的消息，一般我们都是使用这个
+* onMessage(ByteString bytes)，收到字节数组类型消息，我这里没有用到
+* onClosed()，连接关闭
+* onFailure()，连接失败，一般都是在这里发起重连操作
+* send(),向服务端发送消息
+* 为了确保服务端和客户端是否保活，需要发送心跳报文进行检测
+
+### 1.2 SMB
+#### SMB概述
+> SMB(ServerMessageBlock)是微软和英特尔在1987年定制的协议，是在会话层和表示层以及小部分应用层的协议，主要用来使得一个网络上的计算机共享文件等资源
+
+#### Android 使用SMB
+* `build.gradle`中引入`implementation 'org.codelibs:jcifs:2.1.19'`
+* 下载文件实例
+```java
+public int downloadFile(String remoteUrl, String localFilePath) {
+        InputStream in = null;
+        OutputStream out = null;
+        SmbFileInputStream smbIn = null;
+        FileOutputStream fo = null;
+        int flag = -1;
+        try {
+            SmbFile remoteFile = new SmbFile(this.url + remoteUrl,auth);
+            if (remoteFile == null) {
+               Log.i("共享文件不存在","");
+                return flag;
+            }
+            String fileName = remoteFile.getName();
+            File localFile = new File(localFilePath);
+            smbIn = new SmbFileInputStream(remoteFile);
+            fo = new FileOutputStream(localFile);
+            in = new BufferedInputStream(smbIn);
+            out = new BufferedOutputStream(fo);
+            byte[] buffer = new byte[smbBufferLen];
+            int readLen = -1;
+            readLen = in.read(buffer);
+            while (readLen != -1 && !FileTransferService.getAbortFlag()) {
+                out.write(buffer, 0, readLen);
+
+                //保存下载速度
+                downloadBytes += readLen;
+
+                readLen = in.read(buffer);
+            }
+            if(readLen == -1){
+                flag = 0;
+            }
+
+        } catch (Exception e) {
+            Log.e(e.getMessage(),"");
+        } finally {
+            try {
+                if(out != null){
+                    out.close();
+                }
+                if(in != null){
+                    in.close();
+                }
+                if(smbIn != null){
+                    smbIn.close();
+                }
+                if(fo != null){
+                    fo.close();
+                }
+            } catch (IOException e) {
+                Log.e(e.getMessage(),"");
+            }
+        }
+        return flag;
+    }
+```

@@ -557,3 +557,47 @@ Java SE 1.5的新特性，泛型的本质是参数化类型，也就是说所操
 * 单例类序列化，需要重写`readResolve()`方法；否则会破坏单例原则。
 * 同一对象序列化多次，只有第一次序列化为二进制流，以后都只是保存序列化编号，不会重复序列化。
 * 建议所有可序列化的类加上`serialVersionUID` 版本号，方便项目升级。
+
+### 3.13 注解Annotation
+![注解](https://www.runoob.com/wp-content/uploads/2019/08/28123653-84d14b886429482bb601dc97155220fb.jpg)
+#### Annotation组成部分
+> java Annotation的组成中，有三个非常重要的主干类：分别是`Annotation，ElementType，RetentionPolicy`
+* `Annotation`就是个接口：每一个Annotation对象都会有唯一的`RetentionPolicy（Enum）`属性，并且与1~n个`ElementType（Enum）`属性关联
+* `ElementType` 是 `Enum` 枚举类型，它用来指定 Annotation 的类型:例如某一个Annotation对象是Method类型，则该Annotation只能用来修饰方法
+```java
+public enum ElementType {
+    TYPE,               /* 类、接口（包括注释类型）或枚举声明  */
+    FIELD,              /* 字段声明（包括枚举常量）  */
+    METHOD,             /* 方法声明  */
+    PARAMETER,          /* 参数声明  */
+    CONSTRUCTOR,        /* 构造方法声明  */
+    LOCAL_VARIABLE,     /* 局部变量声明  */
+    ANNOTATION_TYPE,    /* 注释类型声明  */
+    PACKAGE             /* 包声明  */
+}
+```
+* `RetetionPolicy` 是 `Enum` 枚举类型，它用来指定 `Annotation` 的策略。通俗点说，就是不同 `RetentionPolicy` 类型的 `Annotation` 的作用域不同
+ * 若Annotation的类型为**SOURCE**，则意味着：Annotation进存在于编译器处理期间，编译器处理完之后该Annotation就没用了。例如，**@Override**标志就是一个 Annotation。当它修饰一个方法的时候，就意味着该方法覆盖父类的方法；并且在编译期间会进行语法检查！编译器处理完后，"@Override" 就没有任何作用了。
+ * 若Annotation的类型为**CLASS**，则意味着：编译器将 Annotation 存储于类对应的 .class 文件中，它是 Annotation 的默认行为。
+ * 若Annotation的类型为**RUNTIME**，则意味着：编译器将 Annotation 存储于 class 文件中，并且可由JVM读入。
+
+#### Annotaion通用定义
+```java
+@Documented
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface MyAnnotation1 {
+}
+```
+> 上述定义了一个Annotation，它的名字是MyAnnotation1。定义之后，在代码中通过`MyAnnotation1`来使用它
+* **@interface**:使用@interface定义注解，意味着它实现了`java.lang.annotation.Annotation `接口，即该注解就是一个Annotation；和我们通常的 implemented 实现接口的方法不同。Annotation 接口的实现细节都由编译器完成。通过 @interface 定义注解后，该注解不能继承其他的注解或接口。
+
+#### java自带的常用接口：
+*  **@Inherited**： 所标注的Annotation具有继承性；如果某一个父类使用了带 @Inherited的注解，则其子类也会继承注解
+*  **@SuppressWarnings**：让编译器对"它所标注的内容"的某些警告保持静默。例如，"@SuppressWarnings(value={"deprecation", "unchecked"})" 表示对"它所标注的内容"中的 "SuppressWarnings 不再建议使用警告"和"未检查的转换时的警告"保持沉默。
+
+#### Annotation的作用
+* 编译检查：让编译器在编译时进行检查
+* 在反射中使用Annotation
+* 根据Annotation生成帮助文档
+* 能够帮忙查看代码
