@@ -217,10 +217,30 @@ public class Test {
 
 ### 2.6 CAS
 ### 2.7 ThreadLocal
+> 假如想实现每一个线程都有自己的专属本地变量该如何解决呢？ JDK提供的`ThreadLocal`类正是为了解决这样的问题。
+> 让每个线程都绑定自己的值，可以将`ThreadLocal`类形象的比喻为存放数据的盒子，盒子中可以存储每个线程的私有数据。
+> 如果你创建了一个`ThreadLocal`变量，那么访问这个变量的每个线程都会有这个变量的本地副本，这也是ThreadLocal变量名的由来。他们可以使用 get（） 和 set（） 方法来获取默认值或将其值更改为当前线程所存的副本的值，从而避免了线程安全问题。
+#### 底层原理
+```java
+public class Thread implements Runnable {
+ ......
+//与此线程有关的ThreadLocal值。由ThreadLocal类维护
+ThreadLocal.ThreadLocalMap threadLocals = null;
+ ......
+}
+// 由源码可见，ThreadLocal存储的变量存在Thread的ThreadLocalMap中
+// 可理解为ThreadLocalMap是专门定制的一种Map
+```
+* 最终的变量是放在了当前线程的ThreadLocalMap中，并不是存在ThreadLocal上，ThreadLocal可以理解为只是ThreadLocalMa的封装，传递了变量值
+* **每个Thread中都具备一个ThreadLocalMap，而ThreadLocalMap可以存储以ThreadLocal为key的键值对**。 比如我们在同一个线程中声明了两个 ThreadLocal 对象的话，会使用 Thread内部都是使用仅有那个ThreadLocalMap 存放数据的，ThreadLocalMap的 key 就是 ThreadLocal对象，value 就是 ThreadLocal 对象调用set方法设置的值。ThreadLocal 是 map结构是为了让每个线程可以关联多个 ThreadLocal变量。这也就解释了ThreadLocal声明的变量为什么在每一个线程都有自己的专属本地变量。
+
+#### 内存泄漏
+> `ThreadLocalMap` 中使用的 key 为 `ThreadLocal` 的弱引用,而 value 是强引用。所以，如果 `ThreadLocal` 没有被外部强引用的情况下，在垃圾回收的时候会 key 会被清理掉，而 value 不会被清理掉。这样一来，`ThreadLocalMap` 中就会出现key为null的Entry。假如我们不做任何措施的话，value 永远无法被GC 回收，这个时候就可能会产生内存泄露。ThreadLocalMap实现中已经考虑了这种情况，在调用 `set()、get()、remove() `方法的时候，会清理掉 key 为 null 的记录。使用完` ThreadLocal`方法后 最好手动调用`remove()`方法。
+
 ### 2.8 `synchronized`关键字
-#### `synchronized`和`lock`的区别
-* 两者都是可**重入锁**（自己可以再次获取自己的内部锁，比如当某一个线程获得了某个对象的锁，此时这个对象锁还没有释放，当期再次想要获取找哥哥对象的锁时还可以获取，如果锁不可重入就会造成死锁）
-* `synchronized`依赖于JVM，而`lock`是JDK层面实现的，依赖于API，需要`lock()`和`unlock()`方法配合`try/finally`语句来完成。
+#### `synchronized`和`ReentrantLock`的区别
+* 两者都是可**重入锁**（自己可以再次获取自己的内部锁，比如当某一个线程获得了某个对象的锁，此时这个对象锁还没有释放，当其再次想要获取这个对象的锁的时候还是可以获取的，如果不可锁重入的话，就会造成死锁。同一个线程每次获取锁，锁的计数器都自增1，所以要等到锁的计数器下降为0时才能释放锁。
+* `synchronized`依赖于JVM，而`ReentrantLock`是JDK层面实现的，依赖于API，需要`lock()`和`unlock()`方法配合`try/finally`语句来完成。
 * **ReenTrantLock 比 synchronized 增加了一些高级功能**
   * 等待可中断
   * 可实现公平锁
