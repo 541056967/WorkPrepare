@@ -112,6 +112,29 @@ public int downloadFile(String remoteUrl, String localFilePath) {
 
 ## 2. 智能电网仿真工具
 ### 2.1 Java Sim
+> Java Sim是一个基于C++ Sim的面向对象的离散事件仿真工具包。
+> 离散事件仿真将仿真对象抽象为一系列相互转换的状态和一组离散事件。系统状态的改变发生在一系列离散的时间点上，当特定的事件发生时，按照既定的规则改变系统状态
+> 离散事件仿真采用事件驱动的推进方式，减少了仿真过程中处理机的“空转”。
+#### org.javasim
+> 所有类（SimulationProcess,Simulation,Scheduler,SimulationEntity,TriggerQueue）都放在org.javasim包中
+
+#### Scheduler
+![scheduler](https://github.com/nmcl/JavaSim/raw/master/docs/images/queues.jpg)
+> 在Javasim中，模拟进程 simulation processes 由调度程序 Scheduler 管理，并放置在调度程序队列 Scheduler Queue（事件列表）中。进程以伪并行方式执行，即只有一个进程在任何实时实例上执行，但许多进程可以在任何模拟时间实例上并发执行
+> 调度程序 Scheduler 协调整个模拟运行，有效地监视主动和被动进程，以使其能够确定何时以及哪一个进程激活下一个进程。模拟应用程序不能直接影响调度程序，但只能通过修改调度程序队列间接影响调度程序
+
+#### SimulationProcess
+支持面向过程的模拟方法，每个仿真实体被视作一个单独的流程，在任何时间点上处于以下状态之一：
+* active：进程已从调度程序队列的头中删除，正在执行其操作。
+* suspended	：进程位于调度程序队列上，计划在指定的模拟时间变为活动状态。
+* passive (被动)：进程不在调度程序队列中。除非另一个进程将它带回到队列中，否则它将不会执行任何进一步的操作。
+* terminated：进程不在调度程序队列中，没有要执行的进一步操作。一旦一个进程终止，就不能让它在同一个模拟运行中进一步执行。一个活动的或挂起的进程被称为已调度。
+> SimulationProcesses 类由于构造函数受到保护，因此无法创建SimulationProcess类的实例，即必须从此类派生类。有五种方法可以激活当前线程：
+* activate()	：这将在当前模拟时间激活进程。
+* activatebefore（simulation process proc）	：这将把进程定位在调度程序队列中的proc之前，并给它相同的模拟时间。如果proc不存在，则将引发模拟异常。
+* activateafter（SimulationProcess Proc）	：这将把进程定位在调度程序队列中，并给它相同的模拟时间。如果proc不存在，则将引发模拟异常。
+* activateat（double at time，boolean prior）	：将进程插入调度程序队列中对应于at time指定的模拟时间的位置。此时间的默认值是当前模拟时间。previous参数用于确定是否应在队列中已经存在的具有相同模拟时间的任何进程之前或之后插入此进程。默认值为假。
+* activatedelay（double attime，boolean prior）	：在指定的延迟（attime）之后激活进程。在新的模拟时间内，将进程插入到队列中，并使用previous参数确定其相对于队列中其他进程的顺序。默认值为假。
 ### 2.2 Java Swing
 
 ## 3. 基于 SDN 的网络管理软件开发
@@ -122,6 +145,8 @@ public int downloadFile(String remoteUrl, String localFilePath) {
 * **控制平面与数据平面的分离**：控制与数据平面的解耦合，双方只需要遵循统一的开放接口进行通信即可
 * **逻辑上的集中控制**：控制器担负起收集和管理所有网络状态信息的重任
 
+
+
 #### SDN的网络体系结构
 ![SDN网络体系结构](https://pic2.zhimg.com/80/v2-6cfed26070184443b94f717ae75b09fd_720w.jpg)
 * SDN网络应用层：实现了对应的网络功能应用，这些应用程序通过调用SDN控制器的北向接口，实现对数据平面设备的配置、管理和控制
@@ -130,8 +155,9 @@ public int downloadFile(String remoteUrl, String localFilePath) {
 * 南向接口：控制器与数据平面的开放接口，通过南向接口对数据平面进行编程控制，实现数据平面的转发等网络行为
 * 数据平面：包括基于软件实现和基于硬件实现的数据平面设备。通过南向接口接收指令并反馈网络配置和运行时的状态信息
 
-
-
 ### 3.1 Floodlight
+> 
+
 ### 3.2 Python+Flask
 ### 3.3 Pyecharts
+> Echarts是一个由百度开源的数据可视化，由此诞生了pyecharts
