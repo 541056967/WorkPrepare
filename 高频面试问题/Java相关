@@ -1,0 +1,142 @@
+# Java相关
+## 1. JDK、JRE和JVM是什么
+* **JDK**：Java Development Kit是Java开发工具包
+* **JRe**：Java Runtime Environment是Java运行时环境，运行.class的环境，并没有编译的功能
+* **JVm**：Java Virutal Machine是Java虚拟机，实现跨平台最核心的部分
+> jdk包含jre，jre包含jvm
+
+## 2. Java八大基本类型
+![](http://my-blog-to-use.oss-cn-beijing.aliyuncs.com/18-9-15/86735519.jpg)
+> 特别注意Boolean 未精确定义字节。Java语言表达式所操作的boolean值，在编译之后都使用Java虚拟机中的int数据类型来代替，而boolean数组将会被编码成Java虚拟机的byte数组，每个元素boolean元素占8位。
+
+## 3. 装箱和拆箱是什么
+* 装箱：将基本类型用它们对应的**应用类型**封装起来
+* 拆箱：将包装类型转换为**基本数据类型**
+#### 底层原理
+> 例如int，装箱时调用`Integer.valueOf(int)`，拆箱时调用`Integer.initValue()`
+
+## 4. hashcode、equals和==
+* `==`：对于基本类型，==比较的是值，对于引用数据类型，==比较的是内存地址
+* `equals()`：是顶级父类Object的方法之一
+```java
+// object默认调用的== ， 你对象如果不重写，可能会发上重大事故
+public boolean equals(Object obj) {
+    return (this == obj); // 比较对象的地址值
+}
+```
+* `hashcode()`：hashcode默认返回对象的地址，在重写equals时也要重写hashcode
+
+## 5. Object类中的方法
+> toString(): getClass().getName()+"@"+Integer.toHexString(hashCode());
+
+## 6. String、StringBuffer、StringBuilder的区别
+### 可变性
+* `String` 类中使用 `final` 关键字修饰字符数组来保存字符串，`private　final　char[]　value，所以 `String` 对象是不可变的。（为了线程安全和JVM缓存速度问题）
+* `StringBuilder` 与 `StringBuffer` 都继承自 `AbstractStringBuilder` 类，在 `AbstractStringBuilder` 中也是使用字符数组保存字符串char[]value 但是没有用 `final` 关键字修饰，所以这两种对象都是可变的
+
+### 总结
+* `StringBuilder`不是线程安全，但效率比StringBuffer高10-15%
+* `StringBuilder` 是线程安全的
+
+## 7. final关键字
+### 使用场景：方法、类、变量
+* 对于一个final变量，如果是**基本数据类型的变量，则其数值一旦在初始化之后便不能更改**；如果是引用类型的变量，则在对其初始化之后便**不能再让其指向另一个对象**。
+* 当用final修饰一个类时，表明**这个类不能被继承**。final类中的所有成员方法都会被隐式地指定为final方法。
+* 使用final方法的原因有两个。第一个原因是把方法锁定，以防任何继承类修改它的含义；第二个原因是效率。
+### 好处
+* 提高了性能，因为JVM会缓存final变量，JVM会对方法变量类进行优化
+* 在多线程下保证线程安全
+  
+## 8. `String.intren()`方法
+* 在JDK6中，如果常量池不存在等值的字符串，JVM就会在常量池中创建一个等值的字符串，返回该字符串的引用
+* 在JDK7中，如果常量池已经存在则直接返回引用；否则复制该堆中字符串对象的引用到常量池并返回
+
+## 9. **static关键字**
+### 修饰成员变量和成员方法
+> 被`static`修饰的成员属于类，不属于这个类的某个对象，被类中所有对象共享。被`static`声明的成员变量属于静态成员变量，静态变量存在Java内存区域的方法区
+### 静态代码块
+> 静态代码块定义在类中方法外，在非静态代码块之前执行。该类不管创建多少对象，静态代码块只执行一次
+
+### 静态内部类
+> static修饰类只能修饰内部类。
+> 非静态内部类在编译完成后隐含地保存一个引用，只想创建它的外围类，但是静态内部类没有。因此它创建不依赖外部类，不能使用任何外围类的非静态成员和方法
+### 静态导包
+> 1.5后的新特性，指定导入某个类中的指定静态资源并且不需要使用类名调用类中静态成员
+
+## 9. Java的异常体系
+> `Java`将程序执行中发生的不正常情况称为“异常”。
+* 执行过程中所发生的的异常事件可分为两大类：
+  * **Error**：Java虚拟机无法解决的严重问题，如JVM系统内部错误、资源耗尽等情况，如栈溢出和内存耗尽
+  * **Exception**：其他因变成错误或偶然的外在因素导致的一般性问题，可以使用针对性的代码处理。例如空指针访问。Exception分为两大类，运行时异常（`RunTimeException`）和编译时异常(FileNotFoundException)
+
+#### 体系
+* `Throwable-->Error，Exception`
+  * `Error--> StackOverflowError,OutOfMemoryError`
+  * `Exception-->RuntimeException-->NullPointerException, ArithmeticException,ArrayIndexOutOfBoundsException, ClassCastException, NUmberFormatException`
+#### 受检异常和非受检异常
+* 派生于`Error和RuntimException`的所有异常都是非受检异常，所有其他的异常成为受检异常
+
+#### try/catch/finally语句执行顺序
+> finally语句总会执行，如果try{}中有return语句，先执行try（包括return表达式），再执行finally，最后返回return表达式的结果
+
+## 10. Java面向对象的三大特性
+### 封装
+> 把一个对象的属性私有化，同时提供一些被外界访问的属性的方法
+### 继承
+> 使用已存在的类作为基础建立新类的技术，可以增加新的数据和功能，也可以使用父类的，但是不能选择性继承
+### 多态
+> 三要素：继承、重写、父类对象指向子类对象
+> 表现：重载和重写
+
+## 11. 接口和抽象类的区别
+* 所有方法在接口中不能有实现（Java8开始接口方法可以有默认实现），而抽象类可以有非抽象的方法
+* 接口中的变量只能用`static`和`final`修饰
+* 一个类可以实现多个接口，但只能继承一个抽象类
+* 接口方法的默认修饰符是`public`,抽象可以有`public、protected、default`，为了被重写不能使用`private`
+
+## 12. 匿名内部类传参数需要final
+> 局部变量是被当成了参数传递给匿名对象的构造器（那就相当于拷贝一份，那就是浅拷贝了），这样的话，如果不管是基本类型还是引用类型，一旦这个局部变量是消失（局部变量随着方法的出栈而消失），还是数据被改变，那么此时匿名构造类是不知道的，毕竟是你浅拷贝了一份，那么如果加上final，这个数据或者引用永远都不会改变，保证数据一致性
+
+## 13. 深拷贝和浅拷贝
+### 深拷贝
+> 对基本数据类型进行值传递，对引用类型进行引用传递般的靠背
+### 深拷贝
+> 对基本数据类型进行值传递，对引用类型，创建一个新的对象，并复制其内容
+
+## 14. 序列化
+* 所有需要网络传输的对象都需要实现序列化接口（`Serializable`）
+* 对象的类名、实例变量都会被序列化；方法、类变量、transient实例变量不会被序列化
+* 如果想让某个变量不被序列化，可以用`transient`修饰
+* 反序列化时，必须有序列化独享的`class`文件
+
+
+## 15. IO
+### BIO-同步阻塞模式
+> 数据的读取写入必须阻塞在一个线程内等待完成
+### NIO-New I/O 同步非阻塞模式
+### AIO-Asynchronous I/O 异步非阻塞模式
+
+## 16. Java反射
+### 反射定义
+> 在运行状态中，能获取任意一个类所有的属性和方法；并且对于任意一个对象，都能调用任意一个方法；这种动态获取信息以及动态调用对象的方法称为反射机制
+
+### 反射的作用
+> Java的对象在运行时会出现两种类型：**编译时类型和运行时类型**，编译时类型由**声明对象时使用的类型来决定**，运行时的类型由**实际赋值给对象的类型决定** 。比如`People = = new Man()`,**编译时根本无法预知该对象和类属于哪些**类，程序只能靠运**行时信息来发现该对象和类的信息**，就要用到反射了。
+
+### 反射的API
+* **Class类**：反射的核心类，可以获取类的属性，方法等信息
+* **Field类**：`Java.lang.reflec` 包中的类，表示类的成员变量，可以用来获取和设置类之中的属性值。
+* **Method类**：`Java.lang.reflec` 包中的类，表示类的方法，它可以用来获取类中的方法信息或者执行方法。
+* **Constructor类**：`Java.lang.reflec` 包中的类，表示类的构造方法
+
+### 获取class的方式
+```java
+Student student = new Student(); *// 这一new 产生一个Student对象，一个Class对象。*
+Class studentClass2 = Student.class; // 调用某个类的 class 属性来获取该类对应的 Class 对象
+Class studentClass3 = Class.forName("com.reflect.Student") // 使用 Class 类中的 forName() 静态方法 ( 最安全 / 性能最好 )
+```
+- `Class.class` 的形式会使 JVM 将使用类装载器将类装入内存（前提是类还没有装入内存），**不做类的初始化工作**，返回 Class 对象。
+- `Class.forName()` 的形式会装入类并做类的**静态初始化**，返回 Class 对象。
+- `getClass()` 的形式会对类进行**静态初始化**、**非静态初始化**，返回引用运行时真正所指的对象（因为子对象的引用可能会赋给父对象的引用变量中）所属的类的 Class 对象。  
+- 静态属性初始化是在加载类的时候初始化，而非静态属性初始化是 new 类实例对象的时候初始化。它们三种情况在生成 Class 对象的时候都会先判断内存中是否已经加载此类。
+- `ClassLoader`就是遵循**双亲委派模型最终调用启动类加载器的类加载器**，实现的功能是“通过一个**类的全限定名来获取描述此类的二进制字节流**”，获取到二进制流后放到JVM中，加载的类**默认不会进行初始化**。
