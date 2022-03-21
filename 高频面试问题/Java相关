@@ -303,3 +303,421 @@ Class studentClass3 = Class.forName("com.reflect.Student") // 使用 Class 类�
 
 #### JDK1.6对synchronized的优化有哪些
 > 引入**自旋锁、适应性自旋锁、偏向锁、轻量级锁**等减少开销
+
+## 31. CAS
+> 即`unsafe.compareAndSwap()`方法
+```cpp
+UNSAFE_ENTRY(jboolean, Unsafe_CompareAndSwapInt(JNIEnv *env, jobject unsafe, jobject obj, jlong offset, jint e, jint x))
+  UnsafeWrapper("Unsafe_CompareAndSwapInt");
+  oop p = JNIHandles::resolve(obj); // oop 安全点 引用
+  jint* addr = (jint *) index_oop_from_field_offset_long(p, offset); // 计算偏移地址
+  return (jint)(Atomic::cmpxchg(x, addr, e)) == e; // 原子操作，比较和更新
+UNSAFE_END
+```
+> 如果obj内的value和except相等，就证明没有其他线程改变过这个变量，那么就更新它为updat，如果这一步的CAS没有成功，就采用自旋的方式继续CAS操作
+
+### CAS的设计思想
+> 乐观思想，基于期望判断是否被修改过
+
+## 32. ThreadLocal相关
+
+> 假如想实现每一个线程都有自己的专属本地变量该如何解决呢？ JDK提供的`ThreadLocal`类正是为了解决这样的问题。
+> 让每个线程都绑定自己的值，可以将`ThreadLocal`类形象的比喻为存放数据的盒子，盒子中可以存储每个线程的私有数据。
+> 如果你创建了一个`ThreadLocal`变量，那么访问这个变量的每个线程都会有这个变量的本地副本，这也是ThreadLocal变量名的由来。他们可以使用 get（） 和 set（） 方法来获取默认值或将其值更改为当前线程所存的副本的值，从而避免了线程安全问题。
+#### 底层原理
+```java
+public class Thread implements Runnable {
+ ......
+//与此线程有关的ThreadLocal值。由ThreadLocal类维护
+ThreadLocal.ThreadLocalMap threadLocals = null;
+ ......
+}
+// 由源码可见，ThreadLocal存储的变量存在Thread的ThreadLocalMap中
+// 可理解为ThreadLocalMap是专门定制的一种Map
+```
+* 最终的变量是放在了当前线程的ThreadLocalMap中，并不是存在ThreadLocal上，ThreadLocal可以理解为只是ThreadLocalMap的封装，传递了变量值
+* **每个Thread中都具备一个ThreadLocalMap，而ThreadLocalMap可以存储以ThreadLocal为key的键值对**。 比如我们在同一个线程中声明了两个 ThreadLocal 对象的话，会使用 Thread内部都是使用仅有那个ThreadLocalMap 存放数据的，ThreadLocalMap的 key 就是 ThreadLocal对象，value 就是 ThreadLocal 对象调用set方法设置的值。ThreadLocal 是 map结构是为了让每个线程可以关联多个 ThreadLocal变量。这也就解释了ThreadLocal声明的变量为什么在每一个线程都有自己的专属本地变量。
+
+#### 内存泄漏
+> `ThreadLocalMap` 中使用的 key 为 `ThreadLocal` 的弱引用,而 value 是强引用。所以，如果 `ThreadLocal` 没有被外部强引用的情况下，在垃圾回收的时候会 key 会被清理掉，而 value 不会被清理掉。这样一来，`ThreadLocalMap` 中就会出现key为null的Entry。假如我们不做任何措施的话，value 永远无法被GC 回收，这个时候就可能会产生内存泄露。ThreadLocalMap实现中已经考虑了这种情况，在调用 `set()、get()、remove() `方法的时候，会清理掉 key 为 null 的记录。使用完` ThreadLocal`方法后 最好手动调用`remove`
+
+## 33. AQS
+### 定义
+> 全名为AbstractQueuedSynchronizer，抽象同步队列，是一个先入先出的双向队列，内部同故宫head和tail记录队首和队尾
+> AQS中维护了一个volatile int state（共享资源）和一个CLH队列。当state=1时代表当前对象锁已经被占用，其他线程来加锁时则会失败，失败的线程被放入一个FIFO的等待队列中，然后会被UNSAFE.park()操作挂起，等待已经获得锁的线程释放锁才能被唤醒。
+> 是一个抽象类
+
+## 34. ReenTrantLock
+> 实现了Lock接口，同时调用内部类sync继承的AQS，state代表该锁的可重入次数
+
+## 35. 线程池
+![架构](https://mmbiz.qpic.cn/mmbiz_png/ghiaFkrBHzv7iczjSlA4Zjda5UqPaiaIZHwka1msiapYyxCH9z6kHrApUE8PVWMlfxHfygP5WwRusZtnaMPVDNqTHg/640?wx_fmt=png&wxfrom=5&wx_lazy=1&wx_co=1)
+>   `executor`（接口）->`executor`（接口）->`ThreadPoolExecutor`（实现类）
+
+* Executor：首先，线程池需要具备能够执行任务的能力，这个任务通过一个线程来处理。而这个执行任务的能力通过Executor接口来约定。
+```java
+public interface Executor {
+    void execute(Runnable command);
+}
+```
+
+* ExecutorService：在某些场景我们需要知道任务执行完之后的结果，拿到返回值，而Runnable接口是没有返回值的；以及一些可以关闭线程池中的线程，执行线程中的任务的方法，定义在ExecutorService接口中。
+![ExecutorService](https://mmbiz.qpic.cn/mmbiz_png/ghiaFkrBHzv7iczjSlA4Zjda5UqPaiaIZHwOE91ZsCRdBdmpstib1hzrQkEx5NQygmrrKHBXWQ47oaRVkkrtrcyXibg/640?wx_fmt=png&wxfrom=5&wx_lazy=1&wx_co=1)
+
+* ThreaPoolExecutor是对ExecutorService的具体实现类，通过ThreaPoolExecutor类可以创建出一个线程池，我们先来看一下代码。
+```java
+ThreadPoolExecutor executor = new ThreadPoolExecutor(
+    // 核心线程数 corePoolSize
+    3, 
+    // 最大线程数 maximumPoolSize
+    5, 
+    // 空闲线程保留存活的时间和时间单位
+    10, TimeUnit.SECONDS, 
+    // 等待队列
+    new ArrayBlockingQueue<>(3), 
+    // 创建线程的工厂
+    Executors.defaultThreadFactory(), 
+    // 拒绝策略
+    new ThreadPoolExecutor.AbortPolicy() 
+);
+```
+
+### 线程池的优点
+* **降低资源消耗**：通过重复利用已经创建的线程降低线程创建和销毁的消耗
+* **提高响应速度**：任务到达时不需要创建立即执行
+* **提高线程可管理型**： 线程是稀缺资源，进行统一的管理、调优和监控
+
+### 线程池举例
+* `newFixedThreadPool`（固定线程池) core和max都为设定值
+* `newSingleThreadExecutor`（单个线程的线程池) core和max都为1
+* `newCachedThreadPool`（缓存线程的线程池) core 为0和max为Inteager.Max
+* `newScheduledThreadPool`（带定时器的线程池）
+
+##s# 线程池参数
+- `corePoolSize`：核心线程数线程数定义了最小可以同时运行的线程数量
+- `maximumPoolSize`：当队列中存放的任务达到队列容量的时候，当前可以同时运行的线程数量变为最大线程数
+- `keepAliveTime`：当线程数大于核心线程数时，多余的空闲线程存活的最长时间
+- `TimeUnit`：时间单位
+- `BlockingQueue<Runnable>`：当新任务来的时候会先判断当前运行的线程数量是否达到核心线程数，如果达到的话，就会被存放在队列中
+- `ThreadFactory`：线程工厂，用来创建线程，一般默认即可
+- `RejectedExecutionHandler`：拒绝策略
+
+### 拒绝策略
+- AbortPolicy：抛出 `RejectedExecutionException`来拒绝新任务的处理。
+- CallerRunsPolicy：当触发拒绝策略，只要线程池没有关闭的话，则使用调用线程直接运行任务。但是这种策略会降低对于新任务提交速度，影响程序的整体性能。另外，这个策略喜欢增加队列容量。如果您的应用程序可以承受此延迟并且你不能任务丢弃任何一个任务请求的话，你可以选择这个策略。（说白了，谁管理任务的，谁就负责帮忙）
+- DiscardPolicy：不处理新任务，直接丢弃掉。
+- DiscardOldestPolicy：此策略将丢弃最早的未处理的任务请求。
+
+### 线程池的数量怎么确定的？
+* 如果是CPU密集型应用，则线程池大小设置为N+1
+* 如果是IO密集型应用，则线程池大小设置为2N+1
+* IO优化中，这样的估算公式可能更适合：最佳线程数目 = （（线程等待时间+线程CPU时间）/线程CPU时间 ）* CPU数目
+
+### execute和submit的区别
+> 接收的参数不同，submit有返回值
+
+
+## 36. 类文件结构
+
+## 37. 类加载过程
+> 加载——验证——准备——解析——初始化
+![类加载](https://gitee.com/dreamcater/blog-img/raw/master/uPic/类加载过程-5A2XIO.png)
+### 加载
+* 通过**全类名**获取定义此类的**二进制字节流**
+* 将字节流所代表的**静态存储结构**转换为方法区的**运行时数据**
+* 在内存中生成一个代表该类的**class**对象作为**方法区数据的访问入口**
+
+### 验证
+* 文件格式验证
+* 元数据验证
+* 字节码验证
+* 符号引用验证
+
+### 准备
+> 为类变量分配内存并设置类变量初始值的阶段
+* 不包括实例变量，实例变量会在对象实例化时随对象一起分配在堆中
+* 初始值通常情况下是数据类型默认的零值，初始化阶段才会赋具体的值
+
+### 解析
+> JVM将常量池内的符号引用**替换为直接引用**的过程，也就是得到类或字段、方法在内存中的指针或偏移量
+
+### 初始化
+> 类加载的最后一步，真正执行类中的**Java程序代码（字节码）**，初始化阶段是执行类构造器<clinit>()方法的过程
+
+## 38. 类加载器
+### 三种类加载器
+* BootrapClassLoader（启动类加载器）：最顶层的加载类，由C++实现
+* ExtensionClassLoader（扩展类加载器）：
+* AppClassLoader（应用程序类加载器）
+
+### 双亲委派模型
+#### 定义
+* 向上查找缓存，检查是否已经被加载过，如果有则返回；如果到顶层加载器的缓存还没有，向下查找加载路径 
+* 自顶向下：`BootstrapClassLoader（启动类加载器）->ExtensionClassLoader->ApplicationClassLoader->UserClassLoader`
+
+#### 好处
+* 避免类的重复加载。由于JVM区分不同类不仅仅是根据类名，相同的class文件被不同的classLoader加载就是不同的两个类
+*  程序更加安全，防止核心api被替换
+#### 如何破坏
+  > 需要保留双亲委派模型：`extends ClassLoader`，重写 `findClass()`.破坏双亲委派模型：直接重写 `loadClass()`
+  > 举例：原生JDBC中的Driver（放在rt.jar下），只是一个接口需要具体的数据库类型实现。MySQL中的Driver是用户编写的，通过引入上下文件类加载器（Thread Context ClassLoader）
+
+## 39. JVM内存区域
+![JVM内存模型-1.8之前](https://gitee.com/dreamcater/blog-img/raw/master/uPic/JVM内存模型-1.8之前-EKvhGB.png)
+![JVM内存模型-1.8](https://gitee.com/dreamcater/blog-img/raw/master/uPic/JVM内存模型-1.8-y9XNlT.png)
+> 粗略的分为**堆和栈**，那么栈是线程私有的，而堆是线程共享的。栈又分为程序计数器、虚拟机栈、本地方法栈
+
+### 程序计数器
+* **字节码解释器通过改变程序计数器来依次读取指令，从而实现代码的流程控制**。如：顺序执行、选择、循环、异常处理
+* 在多线程的情况下，程序计数器用于记录当前线程的执行位置，从而当线程被切换回来的时候能够知道线程上次运行到哪儿
+* 程序计数器是唯一一个不会出现OutOfMemoryError的内存区域，它的生命周期随着线程的创建而创建，随着线程的结束而死亡
+
+### 虚拟机栈
+* 通俗的讲，主要是**对象中的方法产生的各种"材料"**
+* 虚拟机栈存放的是**局部变量、操作数栈、动态链接、方法出口**
+* 栈的Error
+  * **StackOverFlowError**：若Java虚拟机的内存大小不允许动态扩展，那么当线程请求栈的深度超过当前Java虚拟机栈的最大深度的时候，叫抛出异常
+  * **OutOfMemoryError**：若Java虚拟机栈的内存大小允许动态扩展，且当线程请求栈时内存用完了，无法再动态扩展了，就抛出异常
+
+### 本地方法栈
+> 虚拟机栈为虚拟机执行Java方法（也就是字节码）服务，而**本地方法栈则为虚拟机使用到的Native方法服务**(由非java实现，调用非java实现的接口)
+
+### 方法区
+> **方法区与 Java 堆一样，是各个线程共享的内存区域**，它用于存储已被虚拟机加载的**类信息**、**常量**、**静态变量**、即时编译器编译后的代码等数据。不过随着版本的变化，会发生变化。
+
+### 直接内存
+> 直接内存并不是虚拟机运行时数据区的一部分，也不是虚拟机规范中定义的内存区域，但是这部分内存也被频繁地使用，而且也可能导致OutOfMemory异常出现（如DirectByteError）。本机直接内存的分配不会受到java堆的限制，但会受到本机总内存大小以及处理器寻址空间的限制
+
+### 堆
+> 此内存区域的唯一目的就是存放对象实例，几乎所有的对象实例以及数组都在这里分配内存
+* 分为四个区，分别为**eden区、s0(From)区、s1（To）区和tentired区**
+* 在初始阶段，新创建的对象被分配到Eden区，survivor的两块空间都为空
+* 当eden区满的时候，minor GC触发
+* 经过扫描与标记，存活的对象被复制到s0，不存活的对象被回收
+* 在下一次的minior GC中，eden区的情况和上面一致，没有引用的对象被回收，存活的对象被复制到survivor区。然而在survivor区，S0的所有的数据都被复制到S1，需要注意的是，在上次minor GC过程中移动到S0中的相同存活的对象在复制到S1后其年龄要加1。此时Eden区S0区被清空，所有存活的数据都复制到了S1区，并且S1区存在着年龄不一样的对象（重点）
+* 再下一次minor GC则重复这个过程，这一次survivor的两个区对换，存活的对象被复制到s0，存活的对象年龄加一，eden区和另一个survivor区清空
+
+## 40. Minor GC和Full GC触发条件
+* Minor GC触发条件：当eden区满时，触发
+* Full GC触发条件：
+  * 调用System.GC时，系统建议执行Full GC，但是不必然执行
+  * 老年代空间不足
+  * 方法区空间不足
+  * 通过minor gc后进入老年代的平均大小大于老年代的可用内存
+  * 由eden区，from区向to区复制时，对象大小大于to区可用内存，则把该对象转移到老年代，且老年代的可用内存大小小于该对象 
+
+## 41. 栈溢出和堆溢出
+### 栈溢出
+> 线程请求的栈深度大于虚拟机所允许的深度，例如**无限递归**
+#### 为什么无限递归会栈溢出
+* 每次调用方法所产生的资源都放在了虚拟机栈中
+* 虚拟机栈中保存了局部变量表、操作数栈、动态链接、方法出口
+* 局部变量表保存了基本数据类型和对象引用类型
+
+### 堆溢出
+> 如果虚拟机可动态扩展，扩展时无法申请到足够的内存，就会抛出`OutOfMemoryError`异常；如果堆中没有内存完成实例分配并且再也无法扩展时，也会抛出该异常。
+
+## 42. 对象的创建过程
+![Java创建对象的过程](https://gitee.com/dreamcater/blog-img/raw/master/uPic/Java创建对象的过程-fC0wRb.png)
+### 类加载检查
+
+> 虚拟机遇到一条**new**指令时，首先将去检查这个指令的参数**是否能在常量池中定位到这个类的符号引用**，并且检查这个符号引用代表的**类是否已经被加载、解析和初始化过**。如果没有，那必须先执行相应的类加载过程
+
+### 分配内存
+
+> 在**类加载检查**过后，接下来虚拟将为新生对象**分配内存**。对象所需的内存大小在类加载完成后便可确定，为对象分配空间的任务等同于把一块确定大小的内存从java堆中划分出来。分配方式有**指针碰撞**和**空闲列表**两种，**选择哪种分配方式由Java堆是否规整决定，而Java堆是否规整又由采用的垃圾收集器是否带有压缩整理功能决定**
+
+- **指针碰撞**
+  - **堆规整（没有内存碎片）**
+  - 复制算法
+  - GC：Serial、ParNew
+- **空闲列表**
+  - **堆内存不规整的情况下**
+  - 虚拟机会维护一个**列表**，该列表会**记录哪些内存块是可用的**，在分配的时候，找一块儿足够大的内存块来划分给对象实例，最后更新列表激励
+  - GC：CMS
+
+- **并发问题**
+  - **CAS+失败重试：** CAS 是乐观锁的一种实现方式。所谓乐观锁就是，每次不加锁而是假设没有冲突而去完成某项操作，如果因为冲突失败就重试，直到成功为止。**虚拟机采用 CAS 配上失败重试的方式保证更新操作的原子性。**
+  - **TLAB：** 为**每一个线程预先在 Eden 区分配一块儿内存**，JVM 在给线程中的对象分配内存时，**首先在 TLAB 分配，当对象大于 TLAB 中的剩余内存或 TLAB 的内存已用尽时，再采用上述的 CAS 进行内存分配**
+
+### 初始化零值
+
+> 内存分配完成后，虚拟机需要将分配到的内存空间都**初始化为零值（不包括对象头）**，这一步操作保证了对象的实例字段在Java代码中**可以不赋初值就可以直接使用**，程序能访问到这些字段的数据类型所对应的零值
+
+### 设置对象头
+
+> 初始化零值完成后，**虚拟机要对对象进行必要的设置**，例如这个对象是哪个类的实例，如何才能找到类的元数据信息、对象的哈希码、对象的GC分代年龄等信息。**这些信息存放在对象头中**，另外，根据虚拟机当前运行状态的不同，对象会有不同的设置方式
+
+### 执行init方法
+
+> 上述流程完成后，从虚拟机视角看，一个对象已经产生，但从Java程序看，对象创建CIA刚开始：**方法还没有执行，所有的字段还为零。所以一般来说，执行new指令之后接着执行方法**，把对象按照程序员的医院进行初始化。
+
+## 43. 对象的访问方式
+> 句柄和直接使用指针
+### 句柄
+![使用句柄-f4Cw9x](https://gitee.com/dreamcater/blog-img/raw/master/uPic/使用句柄-f4Cw9x.png)
+> 如果使用句柄，Java堆中将会划出一块内存来作为句柄池，reference中存储的就是对象的句柄地址，而**句柄中包含了对象实例数据与类型数据**各组的具体地址信息
+### 直接指针
+![直接指针-8m3HHz](https://gitee.com/dreamcater/blog-img/raw/master/uPic/直接指针-8m3HHz.png)
+> 如果使用直接指针访问，那么 Java 堆对象的布局中就必须考虑如何放置访问类型数据的相关信息，而 reference 中存储的直接就是对象的地址。
+### 区别
+> 这两种对象访问方式各有优势。使用句柄来访问的最大好处是 reference 中存储的是**稳定**的句柄地址，在对象被移动时只会改变句柄中的实例数据指针，而 **reference 本身不需要修改**。使用直接指针访问方式最大的好处就是**速度快**，它节省了一次指针定位的时间开销。
+
+## 44. 如何判断对象死亡
+### 引用计数法
+> 给对象添加一个计数器，引用时+1;引用失效-1.为0就不再使用
+> 无法解决对象之间相互循环引用的问题
+### 可达性分析
+> 算法思想是通过一系列称为**GC Roots**的对象作为起点，从这些节点开始向下搜索，节点所走过的路径称为引用链，当一个对象到GC Roots没有任何引用链相连的话，证明此对象是不可用的。
+### 哪些可以作为GC Roots的根：
+* 虚拟机栈（栈帧中的局部变量区，也叫局部变量表）中引用的对象
+* 本地方法栈中JNI（native方法）引用的对象
+* 方法区中的类静态属性引用的对象
+* 方法区中常量引用的对象
+
+## 45. 垃圾回收算法
+### 垃圾回收算法
+* **标记-清除**
+> 算法分为标记和清除两个阶段：首先标记出所有需要回收的对象，在标记完成后统一回收所有被标记的对象。它是最基础的收集算法，后续的算法都是对其不足进行改进得到，带来两个明显的问题：
+> * 效率问题
+> * 空间问题（清楚后产生大量不连续的碎片）
+
+* **标记-整理**
+> 根据老年代的特点提出的一种标记方法，标记过程与“标记-清除”一样，但后续步骤不是直接对可回收对象回收，而是让**所有存活的对象向一端移动**，然后直接清理掉端边界以外的内存。（老年代一般存入的是大、时间比较久的对象）
+
+* **复制**
+> 为了解决效率问题，‘复制’收集算法出现了。将**内存分为大小相同的两块**，每次使用其中的一块，当这一块的内存使用完后，就将还存活的对象复制到另一块去，然后再把使用的空间一次清理掉。**这样使每次的内存回收都是对内存区间的一半进行回收**（堆的年轻代又分为eden，s0，s1）
+
+* **分代**
+> 比如在新生代中，每次收集都会有大量对象死去，所以可以选择复制算法，只需要付出少量对象的复制成本就可以完成每次垃圾收集。而老年代的对象存活几率比较高，而且没有额外的空间对他进行分配担保，所以我么必须选择**标记-清除或标记-整理算法**进行垃圾回收
+- 大多数情况下，**对象在新生代中 eden 区分配**。当 eden 区没有足够空间进行分配时，虚拟机将发起一次 Minor GC.
+- **大对象直接进入老年代**，大对象就是需要**大量连续内存空间的对象**（比如：字符串、数组）。频繁复制降低性能。
+- 如果对象在 Eden 出生并经过第一次 Minor GC 后仍然能够存活，并且能被 Survivor 容纳的话，将被移动到 Survivor 空间中，并将对象年龄设为 1. 对象在 Survivor 中每熬过一次 MinorGC,年龄就增加 1 岁，当它的年龄增加到一定程度（默认为 15 岁），就会被**晋升到老年代**中。对象晋升到老年代的年龄阈值，可以通过参数 `-XX:MaxTenuringThreshold` 来设置。
+
+## 46. 垃圾回收器件
+**待整理**
+
+## 47. IOC
+### IOC定义
+> Inverse of Control，**将原本在程序中手动创建对象的控制权，交由spring框架来管理。IOC容器是spring用来实现IOC的载体，实际上是一个map，里面存放各种对象。**
+> 将对象间的依赖关系交由spring容器来管理，并由IOC容器完成对象的注入。
+
+### 初始化流程
+- Resource资源定位：这个Resouce指的是BeanDefinition的资源定位。这个过程就是容器找数据的过程，就像水桶装水需要先找到水一样。
+- BeanDefinition的载入和解析：这个载入过程是把用户定义好的Bean表示成Ioc容器内部的数据结构，而这个容器内部的数据结构就是BeanDefition。
+- BeanDefinition注册
+- prepareRefresh()：预备一下， 标记启动时间，上下文环境，我要的材料（beanDefinition）准备好了嘛？
+- obtainFreshBeanFactory()：
+  - 如果已经有了BeanFactory就销毁它里面的单例Bean并关闭这个BeanFactory。
+  - 创建一个新的BeanFactory。
+  - 对这个BeanFactory进行定制（customize),如allowBeanDefinitionOverriding等参数
+  - 转载BeanDefinitions(读取配置文件，将xml转换成对应得BeanDefinition)
+  - 检查是否同时启动了两个BeanFactory。
+- prepareBeanFactory(beanFactory)：设置beanFactory的类加载器，材料（BeanDefinition）解析器等
+- postProcessBeanFactory(beanFactory)：
+  - 设置beanFactory的后置处理器
+  - 具体的子类可以在这步的时候添加一些特殊的 BeanFactoryPostProcessor 的实现类或做点什么事
+- invokeBeanFactoryPostProcessors(beanFactory)：
+  - 调用beanFactory的后置处理器（BeanDefinitionRegisterPostProcessor和BeanFactoryPostProcessor）
+  - 调用 BeanFactoryPostProcessor 各个实现类的 postProcessBeanFactory(factory) 方法
+- registerBeanPostProcessors(beanFactory)：
+  - 注册 BeanPostProcessor 的实现类（bean的后置处理器）
+  - 此接口两个方法: postProcessBeforeInitialization 和 postProcessAfterInitialization 两个方法分别在 Bean 初始化之前和初始化之后得到执行。注意，到这里 Bean 还没初始化
+- initMessageSource()：对上下文中的消息源进行初始化
+- initApplicationEventMulticaster()：初始化上下文的事件广播器
+- onRefresh()：- 模版方法，具体的子类可以在这里初始化一些特殊的 Bean（在初始化 singleton beans 之前）
+- registerListeners()：注册事件监听器
+- finishBeanFactoryInitialization(beanFactory)：初始化所有的 singleton beans
+- finishRefresh()：最后，广播事件，ApplicationContext 初始化完成
+
+## 48. AOP
+### AOP的定义
+> Aspect-Oriented Programming：面向切片编程，将与业务无关、却为业务模块所共同调用给逻辑或责任（例如事务处理】日志管理、权限管理）封装起来，便于减少系统的重复代码，降低模块间的耦合度，有利于未来的可拓展性和可维护性
+> - **Spring AOP就是基于动态代理的**
+- 如果要代理的对象，实现了某个接口，那么Spring AOP会使用**JDK Proxy**，
+- 而对于没有实现接口的对象，这时候Spring AOP会使用 **Cglib** 生成一个被代理对象的子类来作为代理。
+
+## 49. Bean
+### Bean的作用域-5种
+* **singleton作用域**：表示在Spring容器中只有一个Bean实例，以单例的形式存在，是默认的Bean作用域
+* **prototype作用域**：原型作用域，每次调用Bean时都会创建一个新实例，也就是说每次调用`getBean()`方法,相当于执行了`new Bean()`
+* **request作用域**：每次 Http 请求时都会创建一个新的 Bean，该作用域仅适应于`WebApplicationContext`环境。
+* **session 作用域**：同一个 Http Session 共享一个 Bean 对象，不同的 Session 拥有不同的 Bean 对象，仅适用于 WebApplicationContext 环境。
+* **application**作用域：全局的Web作用域，类似于 Servlet 中的 Application。
+
+### spring的单例线程存在安全问题吗
+* 在Bean对象中尽量避免定义可变的成员变量（不现实）
+* 在类中定义一个ThreadLocal成员变量，将需要的可变成员变量保存在ThreadLocal中
+
+### Bean的生命周期
+
+## 50. spring的事务
+### spring的事务隔离级别
+- **TransactionDefinition.ISOLATION_DEFAULT:** 使用后端数据库默认的隔离级别，Mysql 默认采用的 REPEATABLE_READ隔离级别 Oracle 默认采用的 READ_COMMITTED隔离级别.
+- **TransactionDefinition.ISOLATION_READ_UNCOMMITTED:** 最低的隔离级别，允许读取尚未提交的数据变更，**可能会导致脏读、幻读或不可重复读**
+- **TransactionDefinition.ISOLATION_READ_COMMITTED:** 允许读取并发事务已经提交的数据，**可以阻止脏读，但是幻读或不可重复读仍有可能发生**
+- **TransactionDefinition.ISOLATION_REPEATABLE_READ:** 对同一字段的多次读取结果都是一致的，除非数据是被本身事务自己所修改，**可以阻止脏读和不可重复读，但幻读仍有可能发生。**
+- **TransactionDefinition.ISOLATION_SERIALIZABLE:** 最高的隔离级别，完全服从ACID的隔离级别。所有的事务依次逐个执行，这样事务之间就完全不可能产生干扰，也就是说，**该级别可以防止脏读、不可重复读以及幻读**。但是这将严重影响程序的性能。通常情况下也不会用到该级别。
+
+### spring事务失效的原因
+* 数据库引擎不支持事务
+* 没有被spring管理
+* 方法不是public的
+* 自身调用问题
+* 数据源没有配置事务管理器
+* 不支持事务
+* 异常被捕获
+* 异常类型错误
+
+### spring事务的传播机制
+1. **required**（默认）：支持使用当前事务，如果当前事务不存在，创建一个新事务。
+2. **requires_new**：创建一个新事务，如果当前事务存在，把当前事务挂起。
+3. **supports**：支持使用当前事务，如果当前事务不存在，则不使用事务。
+4. **not_supported**：无事务执行，如果当前事务存在，把当前事务挂起。
+5. **mandatory**：强制，支持使用当前事务，如果当前事务不存在，则抛出Exception。
+6. **never**：无事务执行，如果当前有事务则抛出Exception。
+7. **nested**：嵌套事务，如果当前事务存在，那么在嵌套的事务中执行。如果当前事务不存在，则表现跟REQUIRED一样。
+
+###  注解Annotation
+![注解](https://www.runoob.com/wp-content/uploads/2019/08/28123653-84d14b886429482bb601dc97155220fb.jpg)
+#### Annotation组成部分
+> java Annotation的组成中，有三个非常重要的主干类：分别是`Annotation，ElementType，RetentionPolicy`
+* `Annotation`就是个接口：每一个Annotation对象都会有唯一的`RetentionPolicy（Enum）`属性，并且与1~n个`ElementType（Enum）`属性关联
+* `ElementType` 是 `Enum` 枚举类型，它用来指定 Annotation 的类型:例如某一个Annotation对象是Method类型，则该Annotation只能用来修饰方法
+```java
+public enum ElementType {
+    TYPE,               /* 类、接口（包括注释类型）或枚举声明  */
+    FIELD,              /* 字段声明（包括枚举常量）  */
+    METHOD,             /* 方法声明  */
+    PARAMETER,          /* 参数声明  */
+    CONSTRUCTOR,        /* 构造方法声明  */
+    LOCAL_VARIABLE,     /* 局部变量声明  */
+    ANNOTATION_TYPE,    /* 注释类型声明  */
+    PACKAGE             /* 包声明  */
+}
+```
+* `RetetionPolicy` 是 `Enum` 枚举类型，它用来指定 `Annotation` 的策略。通俗点说，就是不同 `RetentionPolicy` 类型的 `Annotation` 的作用域不同
+ * 若Annotation的类型为**SOURCE**，则意味着：Annotation进存在于编译器处理期间，编译器处理完之后该Annotation就没用了。例如，**@Override**标志就是一个 Annotation。当它修饰一个方法的时候，就意味着该方法覆盖父类的方法；并且在编译期间会进行语法检查！编译器处理完后，"@Override" 就没有任何作用了。
+ * 若Annotation的类型为**CLASS**，则意味着：编译器将 Annotation 存储于类对应的 .class 文件中，它是 Annotation 的默认行为。
+ * 若Annotation的类型为**RUNTIME**，则意味着：编译器将 Annotation 存储于 class 文件中，并且可由JVM读入。
+
+#### Annotaion通用定义
+```java
+@Documented
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface MyAnnotation1 {
+}
+```
+> 上述定义了一个Annotation，它的名字是MyAnnotation1。定义之后，在代码中通过`MyAnnotation1`来使用它
+* **@interface**:使用@interface定义注解，意味着它实现了`java.lang.annotation.Annotation `接口，即该注解就是一个Annotation；和我们通常的 implemented 实现接口的方法不同。Annotation 接口的实现细节都由编译器完成。通过 @interface 定义注解后，该注解不能继承其他的注解或接口。
+
+#### java自带的常用接口：
+*  **@Inherited**： 所标注的Annotation具有继承性；如果某一个父类使用了带 @Inherited的注解，则其子类也会继承注解
+*  **@SuppressWarnings**：让编译器对"它所标注的内容"的某些警告保持静默。例如，"@SuppressWarnings(value={"deprecation", "unchecked"})" 表示对"它所标注的内容"中的 "SuppressWarnings 不再建议使用警告"和"未检查的转换时的警告"保持沉默。
+
+#### Annotation的作用
+* 编译检查：让编译器在编译时进行检查
+* 在反射中使用Annotation
+* 根据Annotation生成帮助文档
+* 能够帮忙查看代码

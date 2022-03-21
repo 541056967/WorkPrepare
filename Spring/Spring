@@ -6,33 +6,6 @@
 > 将对象之间的相互依赖关系交给IoC容器来管理，并由IoC容器完成对象的注入，这样可以很大程序上简化应用的开发，把应用从复杂的依赖关系中解放出来。IoC容器就像是一个工厂一样，当我们需要创建一个对象的时候，只需要配置好配置文件/注解即可，完全不用考虑对象如何床架。
 
 #### 初始化流程
-- Resource资源定位：这个Resouce指的是BeanDefinition的资源定位。这个过程就是容器找数据的过程，就像水桶装水需要先找到水一样。
-- BeanDefinition的载入和解析：这个载入过程是把用户定义好的Bean表示成Ioc容器内部的数据结构，而这个容器内部的数据结构就是BeanDefition。
-- BeanDefinition注册
-- prepareRefresh()：预备一下， 标记启动时间，上下文环境，我要的材料（beanDefinition）准备好了嘛？
-- obtainFreshBeanFactory()：
-    - 如果已经有了BeanFactory就销毁它里面的单例Bean并关闭这个BeanFactory。
-    - 创建一个新的BeanFactory。
-    - 对这个BeanFactory进行定制（customize),如allowBeanDefinitionOverriding等参数
-    - 转载BeanDefinitions(读取配置文件，将xml转换成对应得BeanDefinition)
-    - 检查是否同时启动了两个BeanFactory。
-- prepareBeanFactory(beanFactory)：设置beanFactory的类加载器，材料（BeanDefinition）解析器等
-- postProcessBeanFactory(beanFactory)：
-    - 设置beanFactory的后置处理器
-    - 具体的子类可以在这步的时候添加一些特殊的 BeanFactoryPostProcessor 的实现类或做点什么事
-- invokeBeanFactoryPostProcessors(beanFactory)：
-    - 调用beanFactory的后置处理器（BeanDefinitionRegisterPostProcessor和BeanFactoryPostProcessor）
-    - 调用 BeanFactoryPostProcessor 各个实现类的 postProcessBeanFactory(factory) 方法
-- registerBeanPostProcessors(beanFactory)：
-    - 注册 BeanPostProcessor 的实现类（bean的后置处理器）
-    - 此接口两个方法: postProcessBeforeInitialization 和 postProcessAfterInitialization 两个方法分别在 Bean 初始化之前和初始化之后得到执行。注意，到这里 Bean 还没初始化
-- initMessageSource()：对上下文中的消息源进行初始化
-- initApplicationEventMulticaster()：初始化上下文的事件广播器
-- onRefresh()：- 模版方法，具体的子类可以在这里初始化一些特殊的 Bean（在初始化 singleton beans 之前）
-- registerListeners()：注册事件监听器
-- finishBeanFactoryInitialization(beanFactory)：初始化所有的 singleton beans
-- finishRefresh()：最后，广播事件，ApplicationContext 初始化完成
-
 ### AOP
 > `Aspect-Oriented Parogramming`:面向切片编程能够将那些与业务无关，却为业务模块所共同调用的逻辑或责任（例如事务处理、日志管理、权限控制）封装起来，便于减少系统的重复代码，降低模块间的耦合度，并有利于未来的可拓展性和可维护性
 - **Spring AOP就是基于动态代理的**
@@ -41,7 +14,7 @@
 
 ![AOp](https://user-gold-cdn.xitu.io/2018/9/14/165d631e56799a5c?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
-#### 初始化liucheng
+#### 初始化流程
 - 第一句，注册一个AnnotationAwareAspectJAutoProxyCreator（称它为自动代理器），这个Creator是AOP的操作核心，也是扫描Bean，代理Bean的操作所在。 
 - 第二句，解析配置元素，决定代理的模式。其中有JDK动态代理，还有CGLIB代理，这部分后续会再细讲。
 - 第三句，作为系统组件，把Creator这个Bean，放到Spring容器中。让Spring实例化，启动这个Creator。
@@ -63,7 +36,7 @@
 
 ### Spring的单例有线程安全问题吗
 > 多个线程操作同一个对象的时候，对这个对象的非静态成员变量的写操作会存在线程安全问题
-> 常见良种解决办法：
+> 常见两种解决办法：
 * 在Bean对象中尽量避免定义可变的成员变量（不太现实）
 * 在类中定义一个ThreadLocal成员变量，将需要的可变成员变量保存在ThreadLocal中（推荐）
 
@@ -95,7 +68,7 @@
 - 如果有和加载这个 Bean的 Spring 容器相关的 `BeanPostProcessor` 对象，执行`postProcessAfterInitialization()` 方法
 - 当要销毁 Bean 的时候，如果 Bean 实现了 `DisposableBean` 接口，执行 `destroy()` 方法。
 - 当要销毁 Bean 的时候，如果 Bean 在配置文件中的定义包含 destroy-method 属性，执行指定的方法。
- 
+
  ## 3.Spring事务
  ### 隔离级别
 - **TransactionDefinition.ISOLATION_DEFAULT:** 使用后端数据库默认的隔离级别，Mysql 默认采用的 REPEATABLE_READ隔离级别 Oracle 默认采用的 READ_COMMITTED隔离级别.
