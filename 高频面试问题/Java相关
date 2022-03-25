@@ -352,7 +352,7 @@ ThreadLocal.ThreadLocalMap threadLocals = null;
 
 ## 35. 线程池
 ![架构](https://mmbiz.qpic.cn/mmbiz_png/ghiaFkrBHzv7iczjSlA4Zjda5UqPaiaIZHwka1msiapYyxCH9z6kHrApUE8PVWMlfxHfygP5WwRusZtnaMPVDNqTHg/640?wx_fmt=png&wxfrom=5&wx_lazy=1&wx_co=1)
->   `executor`（接口）->`executor`（接口）->`ThreadPoolExecutor`（实现类）
+>   `executor`（接口）->`executorService`（接口）->`ThreadPoolExecutor`（实现类）
 
 * Executor：首先，线程池需要具备能够执行任务的能力，这个任务通过一个线程来处理。而这个执行任务的能力通过Executor接口来约定。
 ```java
@@ -393,7 +393,7 @@ ThreadPoolExecutor executor = new ThreadPoolExecutor(
 * `newCachedThreadPool`（缓存线程的线程池) core 为0和max为Inteager.Max
 * `newScheduledThreadPool`（带定时器的线程池）
 
-##s# 线程池参数
+### 线程池参数
 - `corePoolSize`：核心线程数线程数定义了最小可以同时运行的线程数量
 - `maximumPoolSize`：当队列中存放的任务达到队列容量的时候，当前可以同时运行的线程数量变为最大线程数
 - `keepAliveTime`：当线程数大于核心线程数时，多余的空闲线程存活的最长时间
