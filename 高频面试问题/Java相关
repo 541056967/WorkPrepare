@@ -343,7 +343,7 @@ ThreadLocal.ThreadLocalMap threadLocals = null;
 
 ## 33. AQS
 ### 定义
-> 全名为AbstractQueuedSynchronizer，抽象同步队列，是一个先入先出的双向队列，内部同故宫head和tail记录队首和队尾
+> 全名为AbstractQueuedSynchronizer，抽象同步队列，是一个先入先出的双向队列，内部通过head和tail记录队首和队尾
 > AQS中维护了一个volatile int state（共享资源）和一个CLH队列。当state=1时代表当前对象锁已经被占用，其他线程来加锁时则会失败，失败的线程被放入一个FIFO的等待队列中，然后会被UNSAFE.park()操作挂起，等待已经获得锁的线程释放锁才能被唤醒。
 > 是一个抽象类
 

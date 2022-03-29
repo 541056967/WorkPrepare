@@ -103,4 +103,67 @@
 
 ## 12. Worker
 ### WorkManager
->
+
+
+## 13. Context
+![context](https://upload-images.jianshu.io/upload_images/1187237-1b4c0cd31fd0193f.png?imageMogr2/auto-orient/strip|imageView2/2/w/628/format/webp)
+> 与有关应用程序环境的全局信息的接口。 这是一个抽象类，其实现由Android系统提供。 它允许访问特定于应用程序的资源和类，以及向上调用应用程序级操作，例如启动活动、广播和接收意图等。
+
+## 14. EventBus
+> 一种用于Android的事件发布-订阅机制，简化了各个组件之间通信的复杂度，避免由于使用广播通信带来的不便
+
+### 四种线程模型
+* Posting：默认的，事件处理函数的线程跟发布的在同一个线程
+* MAIN：
+* BackGround：
+* ASYNC
+
+### 发布订阅流程
+* 创建一个事件类型，可以是int，可以是String，可以是自定义的
+* 在需要订阅的模块中，注册eventBus
+```java
+    @Override
+    protected void onStart() {
+        super.onStart();
+        EventBus.getDefault().register(this);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        EventBus.getDefault().unregister(this);
+    } 
+```        
+* 注册后创建一个方法来接受消息
+```java
+@Subscribe(threadMode = ThreadMode.MAIN)
+    public void onReceiveMsg(EventMessage message) {
+        Log.e(TAG, "onReceiveMsg: " + message.toString());
+    }
+
+```
+* 在需要发送事件的地方调用post发送
+```java
+    EventMessage msg = new EventMessage(1,"Hello MainActivity");
+    EventBus.getDefault().post(msg);
+```
+
+## 15. 使用SQLite
+* 创建xxHelper类，继承SQLiteOpenHelper
+  * `onCreat()`创建数据库，第一次建表时使用
+  * `onUpgrade()`更新数据库表结构，数据库版本发生变化的时候回调，必须传入一个version参数
+* 创建xxOperator
+  * 获得之前的xxHelper的实例，   SQLiteDatabase db = xxHelper.getWritableDatabase()/getReadableDatabase();
+  * 更新可以用contentValues
+
+## 16. Maven 和 Gradle 的区别
+> Gradle 的优势：依赖管理、多模块构建、Maven 基于 XML 配置繁琐，阅读性差，Gradle 基于 Groovy，简化了构建代码的行数，易于阅读
+* 依赖管理方面：Gradle 支持依赖动态版本管理，解决依赖冲突机制更明确
+* 多模块构建方面：Gradle 使用 allprojects 和 subprojects 来定义里面的配置是应用于所有项目还是子项目，更加灵活
+* 构建周期方面：Gradle 本身与项目构建周期是解耦的，可以灵活的增删 task
