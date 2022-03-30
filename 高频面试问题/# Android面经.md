@@ -13,9 +13,18 @@
 * TableLayout
 
 ## 3. Activity的生命周期
+![生命周期](https://upload-images.jianshu.io/upload_images/1467278-3a28d45b96ce5745.png?imageMogr2/auto-orient/strip|imageView2/2/w/664/format/webp)
 > onCreate()、onStart()、onReStart()、onResume()、onPause()、onStop()、onDestory()；
 * 可见生命周期：从onStart()直到系统调用onStop()
 * 前台生命周期：从onResume()直到系统调用onPause()
+### 生命周期详解
+* `onCreate()` 方法：首次创建 Activity 时调用，应该在此方法中执行所有正常的静态设置 — 创建视图、将数据绑定到列表等等。
+* `onRestart()` 方法：在 Activity 已停止（调用 onStop()）并即将再次启动前调用，始终后接 onStart()
+* `onStart()` 方法：在 Activity 即将对用户可见之前调用，可后接 onStop()进入隐藏状态
+* `onResume()` 方法：在 Activity 即将开始与用户进行交互之前调用，始终后接 onPause()
+* `onPause()` 方法：当系统即将开始继续另一个 Activity 时调用。用于确认对持久性数据的未保存更改、停止动画以及其他可能消耗 CPU 的内容。应该非常迅速地执行所需操作，因为它返回后，下一个 Activity 才能继续执行。
+* `onStop()` 方法：在 Activity 对用户不再可见时调用。可后接 onRestart()。
+* `onDestroy()` 方法：在 Activity 被销毁前调用。
 
 ## 4. activity在屏幕旋转时的生命周期
 > 不设置Activity的android:configChanges时，切屏会重新调用各个生命周期，切横屏时会执行一次，切竖屏时会执行两次；设置Activity的android:configChanges="orientation"时，切屏还是会重新调用各个生命周期，切横、竖屏时只会执行一次；设置Activity的android:configChanges="orientation|keyboardHidden"时，切屏不会重新调用各个生命周期，只会执行onConfigurationChanged方法
