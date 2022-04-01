@@ -1,0 +1,129 @@
+# 手撕算法
+* 合并两个有序链表
+* 根据前序和中序遍历还原树
+
+## Java
+### final 关键字的作用
+* final变量：被修饰的变量不可变，不可变分为引用不可变和对象不可变，final指的是引用不可变，final修饰的变量必须初始化，通常称为常量
+* final方法：子类可以使用，被修饰的方法不允许任何子类重写
+* final类：被修饰的类不能被继承，所有方法不能被重写
+
+
+### final修饰的成员变量什么时候赋值、初始化
+* 调用构造方法之前
+
+### `finalize()`方法，JVM什么时候执行`finalize()`
+
+### JVM怎么判断一个对象需要回收
+* 引用计数法
+* 可达性分析
+
+### 引用计数法会出现什么问题
+> 无法解决循环引用问题
+
+### 强、弱、软、虚引用有什么区别
+* **强引用**：普通的对象引用关系
+* **软引用**：用于维护一些可有可无的对象，只有在内存不足时，系统会回收软引用对象，如果回收软引用对象后仍然没有足够的内存，才会抛出内存溢出异常。`SoftReference`实现
+* **弱引用**：相对软引用更加无用，JVM无论内存是否充足都会回收，由`WeakReference`实现
+* **虚引用**：形同虚设的引用，主要用来跟踪对象被垃圾回收的互动，由`PhantomReference`实现
+
+### 线程并发库
+* ThreadLocal
+* Executors
+* CountDownLatch
+* Callable
+* Semaphore
+* CyclicBarrier
+
+### 是否看过并发库的源码
+
+
+
+### 怎么排查OOM，比如商家端发生了OOM服务器怎么排查
+#### 排查OOM
+* 增加两个参数，-xx
+  * HeapDumpOnOutOfMemoryError
+  * HeapDumpPath=/xxx 
+* jstat查看监控JVM的内存和GC情况
+
+#### 运行时排查
+```java
+Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler){
+    @Oveeride
+    public void uncaughtException(Thread t, Throwable e){
+        Sysytem.out.println("OOM!")
+    }
+}
+```
+
+## Android
+### 组件的三个方法`onDraw(),onMeasure(),onLayout()`
+#### onDraw
+> 绘制view，绘制背景-绘制自己的内容-绘制子view-绘制装饰
+#### onMeasure
+> 只会在view放入一个父控件中时才被父控件调用，测量空间的大小
+#### onDraw
+> 决定和改变控件的位置
+* 实现一个雷达扫描的效果，怎样做比较高效
+* 可以在哪些地方来更改UI线程
+* Binder是怎样传输数据，底层怎样实现
+
+### AMS
+#### AMS
+> Android Manager Service,安卓中最核心的服务，负责四大组件的启动、切换、调度及应用程序的管理和调度工作
+
+#### 在系统启动阶段的主要工作
+* 调用main方法启动AMS服务
+* 调用`setSystemProcess()`方法
+* 调用`installSystemProvider()`方法
+* 调用`SystemReady()`方法
+
+#### 启动Activity的方法
+* startActvity
+* startActivityForResult
+> 都是通过Binder机制的Client端，调用Server端的ActivityManagerService的startActivity系列方法，最终启动指定的activity
+
+#### 触控时间处理流程
+##### 系统机制分析
+> Android系统基于事件驱动，`input`(点击、滑动、长按等)是最常见的事件之一。其中的核心就是 `InputReader` 和 `InputDispatcher`。`InputReader` 和`InputDispatcher` 是跑在 `SystemServer`进程中的两个 `native` 循环线程，负责读取和分发 Input 事件。
+
+
+
+### 点击图标到应用加载起来，有哪进程参与？
+> 点击桌面启动程序Launcher中的APP图标时，Launcher程序会调用startActivity()函数，通过Binder跨进程通信，发送消息给SystemServer进程。在SystemServer进程中由AMS通过Socket通信告知Zygote进程fork出一个子进程（app进程）
+
+#### Zygote进程
+> Android系统启动过程中，会先启动linux内核，然后加载init.rc文件，启动init进程。然后，init进程通过解析init.rc文件fork生成Zygote进程，该进程也是Android系统的首个Java进程。之后Zygote进程负责孵化System Server进程和APP进程。
+
+#### SystemServer进程
+> 由Zygote进程fork生成，SystemServer是Zygote孵化的第一个进程。负责启动、管理整个Java Framework，系统里面重要的服务都是在这个进程里面开启的，比如AMS(ActivityManagerService)、PMS(PackageManagerService)、WMS(WindowManagerService)。
+
+#### APP进程
+Zygote进程在App层中孵化出的第一个进程是Launcher进程，即手机的桌面APP.Zygote还会孵化出Browser、Email、Phone等APP进程，每个APP至少运行在一个进程上。所有APP进程都由Zygote进程fork生成。
+
+
+#### Android系统里的Client/Server模式
+> 服务器端(server)指的就是SystemServer进程，这个进程提供了很多服务，比如AMS、PMS、WMS等等，所有的APP进程都可以与其通信。客户端(client)指的就是各个独立的APP进程。
+* APP进程与SystemServer进程通过Binder机制，进行跨进程通信。
+* SystemServer进程与Zygote进程通过Socket，进行跨进程通信。
+
+### glide怎么去缓存bitmap
+> Glide是一个安卓的图片加载和缓存库，目的是实现平滑的图片列表滚动效果
+#### 三级缓存
+* 内存缓存：缓存在内存中，基于LRU（least recently used ）算法，机器重启消失。
+* 本地缓存。缓存在本地中。一般键值对形式。(url,filepath)
+* 网络缓存。从网络加载资源，然后缓存在内存、本地中。
+
+#### glide怎么缓存bitmap
+
+
+
+作者：忽然笑
+链接：https://www.imooc.com/article/34434
+来源：慕课网
+
+* Android哪一块和原理你自学的比较深入
+* 项目哪一块做着困难
+* 如何学习一门新的语言
+
+## 反问
