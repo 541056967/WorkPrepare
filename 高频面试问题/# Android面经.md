@@ -363,3 +363,9 @@
 * 多模块构建方面：Gradle 使用 allprojects 和 subprojects 来定义里面的配置是应用于所有项目还是子项目，更加灵活
 * 构建周期方面：Gradle 本身与项目构建周期是解耦的，可以灵活的增删 task
 
+## Binder
+> 一种进程间通信机制，基于开源的 OpenBinder 实现
+### 为什么是 Binder ?
+Android 系统是基于 Linux 内核的，Linux 已经提供了管道、消息队列、共享内存和 Socket 等 IPC 机制。那为什么 Android 还要提供 Binder 来实现 IPC 呢？主要是基于性能、稳定性和安全性几方面的原因。
+
+### 
