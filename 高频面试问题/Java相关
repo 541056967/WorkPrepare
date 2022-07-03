@@ -10,7 +10,7 @@
 > 特别注意Boolean 未精确定义字节。Java语言表达式所操作的boolean值，在编译之后都使用Java虚拟机中的int数据类型来代替，而boolean数组将会被编码成Java虚拟机的byte数组，每个元素boolean元素占8位。
 
 ## 3. 装箱和拆箱是什么
-* 装箱：将基本类型用它们对应的**应用类型**封装起来
+* 装箱：将基本类型用它们对应的**引用类型**封装起来
 * 拆箱：将包装类型转换为**基本数据类型**
 #### 底层原理
 > 例如int，装箱时调用`Integer.valueOf(int)`，拆箱时调用`Integer.initValue()`
@@ -36,7 +36,7 @@ public boolean equals(Object obj) {
 
 ### 总结
 * `StringBuilder`不是线程安全，但效率比StringBuffer高10-15%
-* `StringBuilder` 是线程安全的
+* `StringBuffer` 是线程安全的
 
 ## 7. final关键字
 ### 使用场景：方法、类、变量
@@ -74,7 +74,7 @@ public boolean equals(Object obj) {
   * `Error--> StackOverflowError,OutOfMemoryError`
   * `Exception-->RuntimeException-->NullPointerException, ArithmeticException,ArrayIndexOutOfBoundsException, ClassCastException, NUmberFormatException`
 #### 受检异常和非受检异常
-* 派生于`Error和RuntimException`的所有异常都是非受检异常，所有其他的异常成为受检异常
+* 派生于`Error和RuntimeException`的所有异常都是非受检异常，所有其他的异常成为受检异常
 
 #### try/catch/finally语句执行顺序
 > finally语句总会执行，如果try{}中有return语句，先执行try（包括return表达式），再执行finally，最后返回return表达式的结果
@@ -98,8 +98,8 @@ public boolean equals(Object obj) {
 > 局部变量是被当成了参数传递给匿名对象的构造器（那就相当于拷贝一份，那就是浅拷贝了），这样的话，如果不管是基本类型还是引用类型，一旦这个局部变量是消失（局部变量随着方法的出栈而消失），还是数据被改变，那么此时匿名构造类是不知道的，毕竟是你浅拷贝了一份，那么如果加上final，这个数据或者引用永远都不会改变，保证数据一致性
 
 ## 13. 深拷贝和浅拷贝
-### 深拷贝
-> 对基本数据类型进行值传递，对引用类型进行引用传递般的靠背
+### 浅拷贝
+> 对基本数据类型进行值传递，对引用类型进行引用传递般的拷贝
 ### 深拷贝
 > 对基本数据类型进行值传递，对引用类型，创建一个新的对象，并复制其内容
 
